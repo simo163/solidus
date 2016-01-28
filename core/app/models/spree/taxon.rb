@@ -1,6 +1,6 @@
 module Spree
   class Taxon < Spree::Base
-    acts_as_nested_set dependent: :destroy
+    acts_as_ordered_tree
 
     belongs_to :taxonomy, class_name: 'Spree::Taxonomy', inverse_of: :taxons
     has_many :classifications, -> { order(:position) }, dependent: :delete_all, inverse_of: :taxon
@@ -93,6 +93,22 @@ module Spree
       # NOTE: no :position column needed - awesom_nested_set doesn't handle the
       # reordering if you bring your own :order_column.
       move_to_child_with_index(parent, idx.to_i) unless new_record?
+    end
+
+    def move_to_child_with_index(node, index)
+      # this method overrides move_to_child_with_index offered by awesome_nested_set which was used before
+      if node.children.empty? || node.children.count == index
+        move_to_child_of(node)
+      else
+        my_position = node.children.index(self)
+        if my_position && my_position < index
+          move_to_bottom_of(node.children[index])
+        elsif my_position && my_position == index
+          # do nothing. already there.
+        else
+          move_to_above_of(node.children[index])
+        end
+      end
     end
 
     private
